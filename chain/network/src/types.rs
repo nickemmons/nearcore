@@ -1120,6 +1120,10 @@ pub struct StateResponseInfo {
 // TODO(#1313): Use Box
 #[allow(clippy::large_enum_variant)]
 pub enum NetworkClientMessages {
+    /// Adversarial controls
+    AdvSetSyncInfo(u64, u128, u128),
+    AdvDisableHeaderSync,
+
     /// Received transaction.
     Transaction(SignedTransaction),
     /// Received block header.

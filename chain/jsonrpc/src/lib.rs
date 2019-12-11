@@ -148,6 +148,10 @@ impl JsonRpcHandler {
 
     async fn process_request(&self, request: Request) -> Result<Value, RpcError> {
         match request.method.as_ref() {
+            // Make adversarial controls first to reduce chance of conflicts
+            "adv_set_weight" => self.adv_set_sync_info(request.params).await,
+            "adv_disable_header_sync" => self.adv_disable_header_sync(request.params).await,
+
             "broadcast_tx_async" => self.send_tx_async(request.params).await,
             "broadcast_tx_commit" => self.send_tx_commit(request.params).await,
             "validators" => self.validators(request.params).await,
@@ -162,6 +166,25 @@ impl JsonRpcHandler {
             "gas_price" => self.gas_price(request.params).await,
             _ => Err(RpcError::method_not_found(request.method)),
         }
+    }
+
+    async fn adv_set_sync_info(&self, params: Option<Value>) -> Result<Value, RpcError> {
+        let (height, weight, score,) = parse_params::<(u64, String, String,)>(params)?;
+            actix::spawn(
+            self.client_addr.send(NetworkClientMessages::AdvSetSyncInfo(height, weight.parse().unwrap(), score.parse().unwrap()))
+                .map(|_| ())
+                .map_err(|_| ()),
+        );
+        Ok(Value::String("".to_string()))
+    }
+
+    async fn adv_disable_header_sync(&self, _params: Option<Value>) -> Result<Value, RpcError> {
+        actix::spawn(
+            self.client_addr.send(NetworkClientMessages::AdvDisableHeaderSync)
+                .map(|_| ())
+                .map_err(|_| ()),
+        );
+        Ok(Value::String("".to_string()))
     }
 
     async fn send_tx_async(&self, params: Option<Value>) -> Result<Value, RpcError> {
