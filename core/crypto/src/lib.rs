@@ -11,3 +11,4 @@ mod signature;
 mod signer;
 mod test_utils;
 pub mod vrf;
+pub mod randomness;

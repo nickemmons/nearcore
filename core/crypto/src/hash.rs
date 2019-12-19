@@ -1,31 +1,29 @@
 use blake2::VarBlake2b;
-use curve25519_dalek::scalar::Scalar;
+use generic_array::GenericArray;
 use digest::{BlockInput, FixedOutput, Input, Reset, VariableOutput};
-use generic_array::{ArrayLength, GenericArray};
-use typenum::{U32, U64};
 
-pub use blake2::Blake2b as Blake2b512;
+pub use blake2::Blake2b as Hash512;
 
 #[derive(Clone)]
-pub struct Blake2b256(VarBlake2b);
+pub struct Hash256(VarBlake2b);
 
-impl Default for Blake2b256 {
+impl Default for Hash256 {
     fn default() -> Self {
-        Blake2b256(VarBlake2b::new(32).unwrap())
+        Hash256(VarBlake2b::new(32).unwrap())
     }
 }
 
-impl Input for Blake2b256 {
+impl Input for Hash256 {
     fn input<B: AsRef<[u8]>>(&mut self, data: B) {
         self.0.input(data);
     }
 }
 
-impl BlockInput for Blake2b256 {
-    type BlockSize = <VarBlake2b as BlockInput>::BlockSize;
+impl BlockInput for Hash256 {
+    type BlockSize = VarBlake2b::BlockSize;
 }
 
-impl FixedOutput for Blake2b256 {
+impl FixedOutput for Hash256 {
     type OutputSize = U32;
 
     fn fixed_result(self) -> GenericArray<u8, U32> {
@@ -37,44 +35,64 @@ impl FixedOutput for Blake2b256 {
     }
 }
 
-impl Reset for Blake2b256 {
+impl Reset for Hash256 {
     fn reset(&mut self) {
         self.0.reset();
     }
 }
 
-mod to_scalar_size {
-    use super::*;
+macro_rules! hasher {
+    ($h:ty, $($d:expr,)* $dl:expr) => {
+        hasher!($h $(, $d)*).chain($dl)
+    };
+    ($h:ty) => {
+        $h::default()
+    };
+}
 
-    pub trait ToScalarSize: Sized + ArrayLength<u8> {
-        fn result_scalar(hash: impl FixedOutput<OutputSize = Self>) -> Scalar;
+macro_rules! hash {
+    ($($d:expr),*) => {
+        hasher!(Hash256 $(, $d)*)
+    };
+}
+
+macro_rules! prs {
+    ($($d:expr),*) => {
+        hasher!(Hash512 $(, $d)*).result_scalar()
+    };
+}
+
+pub struct Blake2Xb(Blake2b512); // TODO
+pub struct Blake2XbResult(Blake2b512); // TODO
+
+impl Blake2Xb {
+    pub fn new() -> Self {
+        unimplemented!()
     }
 
-    impl ToScalarSize for U32 {
-        fn result_scalar(hash: impl FixedOutput<OutputSize = U32>) -> Scalar {
-            Scalar::from_bytes_mod_order(hash.fixed_result().into())
-        }
+    pub fn with_output_size(output_size: u32) -> Self {
+        unimplemented!()
     }
 
-    impl ToScalarSize for U64 {
-        fn result_scalar(hash: impl FixedOutput<OutputSize = U64>) -> Scalar {
-            let r = hash.fixed_result();
-            Scalar::from_bytes_mod_order_wide(array_ref!(r, 0, 64))
-        }
+    pub fn result(self) -> Blake2XbResult {
+        unimplemented!()
     }
 }
 
-use self::to_scalar_size::*;
-
-pub trait ToScalar {
-    fn result_scalar(self) -> Scalar;
+impl Input for Blake2Xb {
+    fn input<B: AsRef<[u8]>>(&mut self, data: B) {
+        unimplemented!()
+    }
 }
 
-impl<T: FixedOutput> ToScalar for T
-where
-    <T as FixedOutput>::OutputSize: ToScalarSize,
-{
-    fn result_scalar(self) -> Scalar {
-        <T as FixedOutput>::OutputSize::result_scalar(self)
+impl Blake2XbResult {
+    pub const BLOCK_SIZE: usize = 64;
+
+    pub fn block(index: u32) -> [u8; 64] {
+        unimplemented!()
+    }
+
+    pub fn range(offset: u64, dest: &mut impl BorrowMut<[u8]>) {
+        unimplemented!()
     }
 }
