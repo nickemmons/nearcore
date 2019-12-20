@@ -133,3 +133,12 @@ pub struct Version {
     pub version: String,
     pub build: String,
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum BlockId {
+    Height(BlockIndex),
+    Hash(CryptoHash),
+}
+
+pub type MaybeBlockId = Option<BlockId>;

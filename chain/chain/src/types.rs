@@ -225,12 +225,12 @@ pub trait RuntimeAdapter: Send + Sync {
     ) -> Result<(ValidatorStake, bool), Error>;
 
     /// Number of missed blocks for given block producer.
-    fn get_num_missing_blocks(
+    fn get_num_validator_blocks(
         &self,
         epoch_id: &EpochId,
         last_known_block_hash: &CryptoHash,
         account_id: &AccountId,
-    ) -> Result<u64, Error>;
+    ) -> Result<(u64, u64), Error>;
 
     /// Get current number of shards.
     fn num_shards(&self) -> ShardId;

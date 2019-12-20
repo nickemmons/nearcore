@@ -478,13 +478,15 @@ impl From<ChunkHeaderView> for ShardChunkHeader {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BlockView {
+    pub author: AccountId,
     pub header: BlockHeaderView,
     pub chunks: Vec<ChunkHeaderView>,
 }
 
-impl From<Block> for BlockView {
-    fn from(block: Block) -> Self {
+impl BlockView {
+    pub fn from_author_block(author: AccountId, block: Block) -> Self {
         BlockView {
+            author,
             header: block.header.into(),
             chunks: block.chunks.into_iter().map(Into::into).collect(),
         }
@@ -493,14 +495,16 @@ impl From<Block> for BlockView {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ChunkView {
+    pub author: AccountId,
     pub header: ChunkHeaderView,
     pub transactions: Vec<SignedTransactionView>,
     pub receipts: Vec<ReceiptView>,
 }
 
-impl From<ShardChunk> for ChunkView {
-    fn from(chunk: ShardChunk) -> Self {
+impl ChunkView {
+    pub fn from_author_chunk(author: AccountId, chunk: ShardChunk) -> Self {
         Self {
+            author,
             header: chunk.header.into(),
             transactions: chunk.transactions.into_iter().map(Into::into).collect(),
             receipts: chunk.receipts.into_iter().map(Into::into).collect(),
@@ -1021,7 +1025,8 @@ pub struct CurrentEpochValidatorInfo {
     pub is_slashed: bool,
     #[serde(with = "u128_dec_format")]
     pub stake: Balance,
-    pub num_missing_blocks: BlockIndex,
+    pub num_produced_blocks: BlockIndex,
+    pub num_expected_blocks: BlockIndex,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, BorshDeserialize, BorshSerialize)]

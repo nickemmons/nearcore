@@ -258,13 +258,13 @@ impl EpochManager {
         })
     }
 
-    /// Returns number of missing blocks by given validator.
-    pub fn get_num_missing_blocks(
+    /// Returns number of produced and expected blocks by given validator.
+    pub fn get_num_validator_blocks(
         &mut self,
         epoch_id: &EpochId,
         last_known_block_hash: &CryptoHash,
         account_id: &AccountId,
-    ) -> Result<u64, EpochError> {
+    ) -> Result<(u64, u64), EpochError> {
         let epoch_info = self.get_epoch_info(&epoch_id)?;
         let validator_id = *epoch_info.validator_to_index.get(account_id).ok_or_else(|| {
             EpochError::Other(format!("{} is not a validator in epoch {:?}", account_id, epoch_id))
@@ -273,7 +273,7 @@ impl EpochManager {
         let (produced, expected) =
             block_info.block_tracker.get(&validator_id).unwrap_or_else(|| &(0, 0));
         assert!(expected >= produced);
-        Ok(expected - produced)
+        Ok((*produced, *expected))
     }
 
     /// Finalizes epoch (T), where given last block hash is given, and returns next next epoch id (T + 2).
@@ -716,13 +716,14 @@ impl EpochManager {
             .validators
             .into_iter()
             .map(|info| {
-                let num_missing_blocks =
-                    self.get_num_missing_blocks(&epoch_id, &block_hash, &info.account_id)?;
+                let (num_produced_blocks, num_expected_blocks) =
+                    self.get_num_validator_blocks(&epoch_id, &block_hash, &info.account_id)?;
                 Ok(CurrentEpochValidatorInfo {
                     is_slashed: slashed.contains_key(&info.account_id),
                     account_id: info.account_id,
                     stake: info.amount,
-                    num_missing_blocks,
+                    num_produced_blocks,
+                    num_expected_blocks,
                 })
             })
             .collect::<Result<Vec<CurrentEpochValidatorInfo>, EpochError>>()?;
@@ -2003,19 +2004,34 @@ mod tests {
         record_block(&mut em, h[0], h[1], 1, vec![]);
         record_block(&mut em, h[1], h[3], 3, vec![]);
         let epoch_id = em.get_epoch_id(&h[1]).unwrap();
-        assert_eq!(em.get_num_missing_blocks(&epoch_id, &h[3], &"test1".to_string()).unwrap(), 0);
-        assert_eq!(em.get_num_missing_blocks(&epoch_id, &h[3], &"test2".to_string()).unwrap(), 1);
+        assert_eq!(
+            em.get_num_validator_blocks(&epoch_id, &h[3], &"test1".to_string()).unwrap(),
+            (2, 2)
+        );
+        assert_eq!(
+            em.get_num_validator_blocks(&epoch_id, &h[3], &"test2".to_string()).unwrap(),
+            (0, 1)
+        );
 
         // Build chain 0 <- x <- x <- x <- ( 4 <- 5 ) <- x <- 7
         record_block(&mut em, h[0], h[4], 4, vec![]);
         let epoch_id = em.get_epoch_id(&h[4]).unwrap();
         // Block 4 is first block after genesis and starts new epoch, but we actually count how many missed blocks have happened since block 0.
-        assert_eq!(em.get_num_missing_blocks(&epoch_id, &h[4], &"test1".to_string()).unwrap(), 2);
-        assert_eq!(em.get_num_missing_blocks(&epoch_id, &h[4], &"test2".to_string()).unwrap(), 1);
+        assert_eq!(
+            em.get_num_validator_blocks(&epoch_id, &h[4], &"test1".to_string()).unwrap(),
+            (0, 2)
+        );
+        assert_eq!(
+            em.get_num_validator_blocks(&epoch_id, &h[4], &"test2".to_string()).unwrap(),
+            (1, 2)
+        );
         record_block(&mut em, h[4], h[5], 5, vec![]);
         record_block(&mut em, h[5], h[7], 7, vec![]);
         // The next epoch started after 5 with 6, and test2 missed their slot from perspective of block 7.
-        assert_eq!(em.get_num_missing_blocks(&epoch_id, &h[7], &"test2".to_string()).unwrap(), 1);
+        assert_eq!(
+            em.get_num_validator_blocks(&epoch_id, &h[7], &"test2".to_string()).unwrap(),
+            (0, 1)
+        );
     }
 
     /// Test when blocks are all produced, validators can be kicked out because of not producing

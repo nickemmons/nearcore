@@ -12,7 +12,7 @@ use near_network::types::AccountOrPeerIdOrHash;
 use near_network::PeerInfo;
 use near_primitives::hash::CryptoHash;
 use near_primitives::sharding::ChunkHash;
-use near_primitives::types::{AccountId, BlockIndex, ShardId, ValidatorId, Version};
+use near_primitives::types::{AccountId, BlockIndex, MaybeBlockId, ShardId, ValidatorId, Version};
 use near_primitives::utils::generate_random_string;
 use near_primitives::views::{
     BlockView, ChunkView, EpochValidatorInfo, FinalExecutionOutcomeView, GasPriceView,
@@ -318,10 +318,8 @@ impl Message for GetNetworkInfo {
     type Result = Result<NetworkInfoResponse, String>;
 }
 
-pub enum GetGasPrice {
-    Height(BlockIndex),
-    Hash(CryptoHash),
-    None,
+pub struct GetGasPrice {
+    pub block_id: MaybeBlockId,
 }
 
 impl Message for GetGasPrice {
@@ -350,7 +348,7 @@ impl Message for TxStatus {
 }
 
 pub struct GetValidatorInfo {
-    pub last_block_hash: CryptoHash,
+    pub block_id: MaybeBlockId,
 }
 
 impl Message for GetValidatorInfo {

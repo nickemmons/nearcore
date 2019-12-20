@@ -334,13 +334,13 @@ impl RuntimeAdapter for KeyValueRuntime {
         Ok(validators[offset + delta].account_id.clone())
     }
 
-    fn get_num_missing_blocks(
+    fn get_num_validator_blocks(
         &self,
         _epoch_id: &EpochId,
         _last_known_block_hash: &CryptoHash,
         _account_id: &AccountId,
-    ) -> Result<u64, Error> {
-        Ok(0)
+    ) -> Result<(u64, u64), Error> {
+        Ok((0, 0))
     }
 
     fn num_shards(&self) -> ShardId {
