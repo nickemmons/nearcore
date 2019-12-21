@@ -3,26 +3,17 @@ use bs58;
 use curve25519_dalek::constants::{
     RISTRETTO_BASEPOINT_POINT as G, RISTRETTO_BASEPOINT_TABLE as GT,
 };
-use curve25519_dalek::traits::VartimeMultiscalarMul;
-use digest::Input;
 use rand_core::{CryptoRng, RngCore};
-use serde::de::{Error as _, Unexpected};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::borrow::Borrow;
-use std::convert::{identity, TryFrom};
-use std::fmt::{self, Debug, Display, Formatter};
+use std::convert::TryFrom;
 use subtle::{ConditionallySelectable, ConstantTimeEq};
 
 #[derive(Copy, Clone)]
-pub struct PublicKey([u8; 32], Point);
+pub struct PublicKey(pub(crate) [u8; 32], pub(crate) Point);
 #[derive(Copy, Clone)]
-pub struct SecretKey(Scalar, PublicKey);
+pub struct SecretKey(pub(crate) Scalar, pub(crate) PublicKey);
 value_type!(pub, Value, 32, "value");
 value_type!(pub, Proof, 64, "proof");
-
-fn bvmul2(s1: Scalar, p1: &Point, s2: Scalar, p2: &Point) -> [u8; 32] {
-    Point::vartime_multiscalar_mul(&[s1, s2], [p1, p2].iter().copied()).pack()
-}
 
 impl PublicKey {
     fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
@@ -38,8 +29,14 @@ impl PublicKey {
     }
 
     fn is_valid(&self, input: &[u8], value: &Value, proof: &Proof) -> bool {
-        let p = try_unpack!(&value.0), (r, c) = try_unpack!(&proof.0);
-        hash!(&self.0, &value.0, bvmul2(r + c * self.offset(input), &G, c, &self.1), bvmul2(r, &p, c, &G)) == c
+        let p = try_unpack!(&value.0);
+        let (r, c) = try_unpack!(&proof.0);
+        hash_s!(
+            &self.0,
+            &value.0,
+            vmul2(r + c * self.offset(input), &G, c, &self.1),
+            vmul2(r, &p, c, &G)
+        ) == c
     }
 }
 
@@ -90,7 +87,7 @@ impl SecretKey {
         let inv = safe_invert(x);
         let val = bbmul(inv);
         let k = prs!(x);
-        let c = hash!(&(self.1).0, &val, &k * &GT, &(inv * k) * &GT);
+        let c = hash_s!(&(self.1).0, &val, &k * &GT, &(inv * k) * &GT);
         let r = k - c * x;
         (Value(val), Proof((r, c).pack()))
     }
@@ -119,9 +116,9 @@ macro_rules! traits {
     };
 }
 
-common_conversions!(PublicKey, 32, &self.0, "public key");
+common_conversions!(PublicKey, 32, |s| &s.0, "public key");
 traits!(PublicKey, 32);
-common_conversions!(SecretKey, 32, self.0.as_bytes(), "secret key");
+common_conversions!(SecretKey, 32, |s| s.0.as_bytes(), "secret key");
 traits!(SecretKey, 32);
 
 #[cfg(test)]

@@ -1,17 +1,12 @@
-use serde::de::{Error as _, Unexpected};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::convert::{identity, TryFrom};
-use std::fmt::{self, Debug, Display, Formatter};
-
 macro_rules! to_str {
     ($v:expr) => {
-        identity::<String>($v.into()).as_str()
+        ::std::convert::identity::<String>($v.into()).as_str()
     };
 }
 
 macro_rules! common_conversions {
-    ($ty:ty, $l:lit, $bytes:expr, $what:lit) => {
-        impl TryFrom<&[u8]> for $ty {
+    ($ty:ty, $l:literal, $bytes:expr, $what:literal) => {
+        impl ::std::convert::TryFrom<&[u8]> for $ty {
             type Error = ();
 
             fn try_from(value: &[u8]) -> Result<Self, ()> {
@@ -23,7 +18,7 @@ macro_rules! common_conversions {
             }
         }
 
-        impl TryFrom<&str> for $ty {
+        impl ::std::convert::TryFrom<&str> for $ty {
             type Error = ();
 
             fn try_from(value: &str) -> Result<Self, ()> {
@@ -36,7 +31,7 @@ macro_rules! common_conversions {
             }
         }
 
-        impl TryFrom<String> for $ty {
+        impl ::std::convert::TryFrom<String> for $ty {
             type Error = ();
 
             fn try_from(value: String) -> Result<Self, ()> {
@@ -46,7 +41,7 @@ macro_rules! common_conversions {
 
         impl AsRef<[u8; $l]> for $ty {
             fn as_ref(&self) -> &[u8; $l] {
-                $bytes
+                ::std::convert::identity::<fn(&$ty) -> &[u8; $l]>($bytes)(self)
             }
         }
 
@@ -80,29 +75,34 @@ macro_rules! common_conversions {
             }
         }
 
-        impl Debug for $ty {
-            fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        impl ::std::fmt::Debug for $ty {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 f.write_str(to_str!(self))
             }
         }
 
-        impl Display for $ty {
-            fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        impl ::std::fmt::Display for $ty {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 f.write_str(to_str!(self))
             }
         }
 
-        impl<'de> Deserialize<'de> for $ty {
-            fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-                let s = <&str as Deserialize<'de>>::deserialize(deserializer)?;
-                Self::try_from(s).map_err(|_| {
-                    D::Error::invalid_value(Unexpected::Str(s), &concat!("a valid ", $what))
+        impl<'de> ::serde::Deserialize<'de> for $ty {
+            fn deserialize<D: ::serde::Deserializer<'de>>(
+                deserializer: D,
+            ) -> Result<Self, D::Error> {
+                let s = <&str as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
+                <Self as ::std::convert::TryFrom<&str>>::try_from(s).map_err(|_| {
+                    <D::Error as ::serde::de::Error>::invalid_value(
+                        ::serde::de::Unexpected::Str(s),
+                        &concat!("a valid ", $what),
+                    )
                 })
             }
         }
 
-        impl Serialize for $ty {
-            fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        impl ::serde::Serialize for $ty {
+            fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
                 serializer.serialize_str(to_str!(self))
             }
         }
@@ -110,7 +110,7 @@ macro_rules! common_conversions {
 }
 
 macro_rules! value_type {
-    ($vis:vis, $ty:ident, $l:lit, $what:ident) => {
+    ($vis:vis, $ty:ident, $l:literal, $what:literal) => {
         #[derive(Copy, Clone)]
         $vis struct $ty(pub [u8; $l]);
 
@@ -140,6 +140,6 @@ macro_rules! value_type {
             }
         }
 
-        common_conversions!($ty, $l, &self.0, $what);
+        common_conversions!($ty, $l, |s| &s.0, $what);
     };
 }
