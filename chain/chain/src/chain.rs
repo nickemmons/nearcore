@@ -367,7 +367,7 @@ impl Chain {
         for bp in bps.iter() {
             arr.append(&mut hash(bp.account_id.as_bytes()).into());
             arr.append(&mut hash(bp.public_key.try_to_vec()?.as_ref()).into());
-            arr.append(&mut hash(bp.amount.try_to_vec()?.as_ref()).into());
+            arr.append(&mut hash(bp.stake.try_to_vec()?.as_ref()).into());
         }
 
         Ok(hash(&arr))
@@ -913,7 +913,7 @@ impl Chain {
                     .validator_proposals
                     .iter()
                     .map(|validator_stake| {
-                        (validator_stake.amount / 1_000_000_000_000_000_000) as i64
+                        (validator_stake.stake / 1_000_000_000_000_000_000) as i64
                     })
                     .sum::<i64>();
                 near_metrics::set_gauge(&metrics::VALIDATOR_AMOUNT_STAKED, sum);

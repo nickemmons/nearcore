@@ -136,7 +136,7 @@ impl KeyValueRuntime {
                             account_id: account_id.clone(),
                             public_key: SecretKey::from_seed(KeyType::ED25519, account_id)
                                 .public_key(),
-                            amount: 1_000_000,
+                            stake: 1_000_000,
                         })
                         .collect()
                 })

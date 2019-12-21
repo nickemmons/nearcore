@@ -455,8 +455,8 @@ impl dyn RuntimeAdapter {
         let mut total_stake = 0;
 
         for bp in block_producers {
-            account_to_stake.insert(bp.0.account_id, bp.0.amount);
-            total_stake += bp.0.amount;
+            account_to_stake.insert(bp.0.account_id, bp.0.stake);
+            total_stake += bp.0.stake;
         }
 
         for approval in approvals {

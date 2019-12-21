@@ -8,7 +8,9 @@ use near_primitives::hash::CryptoHash;
 use near_primitives::types::{
     AccountId, Balance, BlockIndex, EpochId, ShardId, ValidatorId, ValidatorStake,
 };
-use near_primitives::views::{CurrentEpochValidatorInfo, EpochValidatorInfo};
+use near_primitives::views::{
+    CurrentEpochValidatorInfo, EpochValidatorInfo, NextEpochValidatorInfo,
+};
 use near_store::{ColBlockInfo, ColEpochInfo, ColEpochStart, Store, StoreUpdate};
 
 use crate::proposals::proposals_to_epoch_info;
@@ -185,7 +187,7 @@ impl EpochManager {
                 block_validator_tracker = info.block_tracker;
                 for proposal in info.all_proposals.into_iter().rev() {
                     if !slashed_validators.contains_key(&proposal.account_id) {
-                        if proposal.amount == 0 && !proposals.contains_key(&proposal.account_id) {
+                        if proposal.stake == 0 && !proposals.contains_key(&proposal.account_id) {
                             validator_kickout.insert(proposal.account_id.clone());
                         }
                         // This code relies on the fact that within a block the proposals are ordered
@@ -667,14 +669,14 @@ impl EpochManager {
         let slashed = self.get_slashed_validators(last_block_hash)?.clone();
         let epoch_id = self.get_epoch_id(last_block_hash)?;
         let epoch_info = self.get_epoch_info(&epoch_id)?;
-        let total_stake: Balance = epoch_info.validators.iter().map(|v| v.amount).sum();
+        let total_stake: Balance = epoch_info.validators.iter().map(|v| v.stake).sum();
         let total_slashed_stake: Balance = slashed
             .iter()
             .filter_map(|(account_id, slashed)| match slashed {
                 SlashState::DoubleSign => {
                     let idx = epoch_info.validator_to_index.get(account_id);
                     Some(if let Some(&idx) = idx {
-                        epoch_info.validators[idx as usize].amount
+                        epoch_info.validators[idx as usize].stake
                     } else {
                         0
                     })
@@ -687,7 +689,7 @@ impl EpochManager {
         for (account_id, slash_state) in slashed {
             if let SlashState::DoubleSign = slash_state {
                 if let Some(&idx) = epoch_info.validator_to_index.get(&account_id) {
-                    let stake = epoch_info.validators[idx as usize].amount;
+                    let stake = epoch_info.validators[idx as usize].stake;
                     let slashed_stake = if is_totally_slashed {
                         stake
                     } else {
@@ -712,16 +714,30 @@ impl EpochManager {
         let epoch_id = self.get_epoch_id(block_hash)?;
         let slashed = self.get_slashed_validators(block_hash)?.clone();
         let cur_epoch_info = self.get_epoch_info(&epoch_id)?.clone();
+        let mut validator_to_shard = (0..cur_epoch_info.validators.len())
+            .map(|_| HashSet::default())
+            .collect::<Vec<HashSet<ShardId>>>();
+        for (shard_id, validators) in cur_epoch_info.chunk_producers.iter().enumerate() {
+            for validator_id in validators {
+                validator_to_shard[*validator_id as usize].insert(shard_id as ShardId);
+            }
+        }
         let current_validators = cur_epoch_info
             .validators
             .into_iter()
-            .map(|info| {
+            .enumerate()
+            .map(|(validator_id, info)| {
                 let (num_produced_blocks, num_expected_blocks) =
                     self.get_num_validator_blocks(&epoch_id, &block_hash, &info.account_id)?;
+                let mut shards =
+                    validator_to_shard[validator_id].clone().into_iter().collect::<Vec<ShardId>>();
+                shards.sort();
                 Ok(CurrentEpochValidatorInfo {
                     is_slashed: slashed.contains_key(&info.account_id),
                     account_id: info.account_id,
-                    stake: info.amount,
+                    public_key: info.public_key,
+                    stake: info.stake,
+                    shards,
                     num_produced_blocks,
                     num_expected_blocks,
                 })
@@ -730,12 +746,37 @@ impl EpochManager {
         let current_fishermen = cur_epoch_info.fishermen;
         let next_epoch_id = self.get_next_epoch_id(block_hash)?;
         let next_epoch_info = self.get_epoch_info(&next_epoch_id)?;
-        let next_validators = next_epoch_info.validators.clone();
+        let mut next_validator_to_shard = (0..next_epoch_info.validators.len())
+            .map(|_| HashSet::default())
+            .collect::<Vec<HashSet<ShardId>>>();
+        for (shard_id, validators) in next_epoch_info.chunk_producers.iter().enumerate() {
+            for validator_id in validators {
+                next_validator_to_shard[*validator_id as usize].insert(shard_id as u64);
+            }
+        }
+        let next_validators = next_epoch_info
+            .validators
+            .iter()
+            .enumerate()
+            .map(|(validator_id, info)| {
+                let mut shards = next_validator_to_shard[validator_id]
+                    .clone()
+                    .into_iter()
+                    .collect::<Vec<ShardId>>();
+                shards.sort();
+                NextEpochValidatorInfo {
+                    account_id: info.account_id.clone(),
+                    public_key: info.public_key.clone(),
+                    stake: info.stake,
+                    shards,
+                }
+            })
+            .collect();
         let next_fishermen = next_epoch_info.fishermen.clone();
         let current_proposals = self.get_block_info(block_hash)?.all_proposals.clone();
         Ok(EpochValidatorInfo {
             current_validators,
-            next_validators: next_validators.into_iter().map(Into::into).collect(),
+            next_validators,
             current_fishermen: current_fishermen.into_iter().map(Into::into).collect(),
             next_fishermen: next_fishermen.into_iter().map(Into::into).collect(),
             current_proposals: current_proposals.into_iter().map(Into::into).collect(),

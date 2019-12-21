@@ -67,12 +67,12 @@ pub struct ValidatorStake {
     /// Public key of the proposed validator.
     pub public_key: PublicKey,
     /// Stake / weight of the validator.
-    pub amount: Balance,
+    pub stake: Balance,
 }
 
 impl ValidatorStake {
-    pub fn new(account_id: AccountId, public_key: PublicKey, amount: Balance) -> Self {
-        ValidatorStake { account_id, public_key, amount }
+    pub fn new(account_id: AccountId, public_key: PublicKey, stake: Balance) -> Self {
+        ValidatorStake { account_id, public_key, stake }
     }
 }
 
