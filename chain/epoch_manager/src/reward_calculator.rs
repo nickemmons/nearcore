@@ -1,4 +1,4 @@
-use near_primitives::types::{AccountId, Balance};
+use near_primitives::types::{AccountId, Balance, ValidatorStats};
 use std::cmp::max;
 use std::collections::HashMap;
 
@@ -16,7 +16,7 @@ impl RewardCalculator {
     /// Calculate validator reward for an epoch based on their online ratio
     pub fn calculate_reward(
         &self,
-        validator_online_ratio: HashMap<AccountId, (u64, u64)>,
+        validator_online_ratio: HashMap<AccountId, ValidatorStats>,
         total_storage_rent: Balance,
         total_validator_reward: Balance,
         total_supply: Balance,
@@ -37,12 +37,12 @@ impl RewardCalculator {
         }
         let epoch_per_validator_reward =
             (epoch_total_reward - epoch_protocol_treasury) / num_validators as u128;
-        for (account_id, (num_blocks, expected_num_blocks)) in validator_online_ratio {
-            let reward = if expected_num_blocks == 0 {
+        for (account_id, validator_stats) in validator_online_ratio {
+            let reward = if validator_stats.blocks_expected == 0 {
                 0
             } else {
-                epoch_per_validator_reward * u128::from(num_blocks)
-                    / u128::from(expected_num_blocks)
+                epoch_per_validator_reward * u128::from(validator_stats.blocks_produced)
+                    / u128::from(validator_stats.blocks_expected)
             };
             res.insert(account_id, reward);
         }

@@ -100,11 +100,10 @@ fn main() {
                     restake = true;
                 }
             });
-        restake = restake
-            || !validators
-                .next_validators
-                .iter()
-                .any(|validator_info| validator_info.account_id == account_id);
+        restake |= !validators
+            .next_validators
+            .iter()
+            .any(|validator_info| validator_info.account_id == account_id);
         if restake {
             //                        // kicked out or getting kicked out
             let amount = if stake_amount == 0 { last_stake_amount } else { stake_amount };

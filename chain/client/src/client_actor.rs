@@ -629,13 +629,12 @@ impl ClientActor {
             }
         } else {
             let num_blocks_missing = if head.epoch_id == epoch_id {
-                let (num_blocks_produced, num_blocks_expected) =
-                    self.client.runtime_adapter.get_num_validator_blocks(
-                        &head.epoch_id,
-                        &head.last_block_hash,
-                        &next_block_producer_account,
-                    )?;
-                num_blocks_expected - num_blocks_produced
+                let validator_stats = self.client.runtime_adapter.get_num_validator_blocks(
+                    &head.epoch_id,
+                    &head.last_block_hash,
+                    &next_block_producer_account,
+                )?;
+                validator_stats.blocks_expected - validator_stats.blocks_produced
             } else {
                 0
             };

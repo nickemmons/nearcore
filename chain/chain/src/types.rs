@@ -1,11 +1,14 @@
+use std::cmp::{max, Ordering};
 use std::collections::HashMap;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
 use near_crypto::Signature;
+use near_pool::types::PoolIterator;
 use near_primitives::block::{Approval, WeightAndScore};
 pub use near_primitives::block::{Block, BlockHeader, Weight};
 use near_primitives::challenge::{ChallengesResult, SlashedValidator};
+use near_primitives::errors::InvalidTxError;
 use near_primitives::hash::{hash, CryptoHash};
 use near_primitives::merkle::{merklize, MerklePath};
 use near_primitives::receipt::Receipt;
@@ -13,16 +16,13 @@ use near_primitives::sharding::{ReceiptProof, ShardChunk, ShardChunkHeader};
 use near_primitives::transaction::{ExecutionOutcomeWithId, SignedTransaction};
 use near_primitives::types::{
     AccountId, Balance, BlockIndex, EpochId, Gas, MerkleHash, ShardId, StateRoot, StateRootNode,
-    ValidatorStake,
+    ValidatorStake, ValidatorStats,
 };
 use near_primitives::views::{EpochValidatorInfo, QueryResponse};
 use near_store::{PartialStorage, StoreUpdate, WrappedTrieChanges};
 
 use crate::chain::WEIGHT_MULTIPLIER;
 use crate::error::Error;
-use near_pool::types::PoolIterator;
-use near_primitives::errors::InvalidTxError;
-use std::cmp::{max, Ordering};
 
 #[derive(PartialEq, Eq, Clone, Debug, BorshSerialize, BorshDeserialize)]
 pub struct ReceiptResponse(pub CryptoHash, pub Vec<Receipt>);
@@ -230,7 +230,7 @@ pub trait RuntimeAdapter: Send + Sync {
         epoch_id: &EpochId,
         last_known_block_hash: &CryptoHash,
         account_id: &AccountId,
-    ) -> Result<(u64, u64), Error>;
+    ) -> Result<ValidatorStats, Error>;
 
     /// Get current number of shards.
     fn num_shards(&self) -> ShardId;
@@ -555,11 +555,12 @@ mod tests {
 
     use near_crypto::{InMemorySigner, KeyType, Signer};
     use near_primitives::block::genesis_chunks;
-
-    use super::*;
-    use crate::Chain;
     use near_primitives::merkle::verify_path;
     use near_primitives::transaction::{ExecutionOutcome, ExecutionStatus};
+
+    use crate::Chain;
+
+    use super::*;
 
     #[test]
     fn test_block_produce() {

@@ -1,8 +1,9 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
+use near_crypto::PublicKey;
+
 use crate::challenge::ChallengesResult;
 use crate::hash::CryptoHash;
-use near_crypto::PublicKey;
 
 /// Account identifier. Provides access to user's state.
 pub type AccountId = String;
@@ -142,3 +143,9 @@ pub enum BlockId {
 }
 
 pub type MaybeBlockId = Option<BlockId>;
+
+#[derive(Default, BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
+pub struct ValidatorStats {
+    pub blocks_produced: BlockIndex,
+    pub blocks_expected: BlockIndex,
+}

@@ -63,6 +63,9 @@ pub const TX_ROUTING_HEIGHT_HORIZON: BlockIndex = 4;
 /// The multiplier of the stake percentage when computing block weight
 pub const WEIGHT_MULTIPLIER: u128 = 1_000_000_000;
 
+/// Private constant for 1 NEAR (copy from near/config.rs) used for reporting.
+const NEAR_BASE: Balance = 1_000_000_000_000_000_000_000_000;
+
 /// Block economics config taken from genesis config
 pub struct BlockEconomicsConfig {
     pub gas_price_adjustment_rate: u8,
@@ -909,15 +912,13 @@ impl Chain {
                     }
                     None => {}
                 }
-                // Sum validator balances in full NEARs (divided by 10**18)
+                // Sum validator balances in full NEARs (divided by 10**24)
                 let sum = block
                     .header
                     .inner_rest
                     .validator_proposals
                     .iter()
-                    .map(|validator_stake| {
-                        (validator_stake.stake / 1_000_000_000_000_000_000) as i64
-                    })
+                    .map(|validator_stake| (validator_stake.stake / NEAR_BASE) as i64)
                     .sum::<i64>();
                 near_metrics::set_gauge(&metrics::VALIDATOR_AMOUNT_STAKED, sum);
 

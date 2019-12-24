@@ -26,7 +26,7 @@ use near_primitives::sharding::ShardChunkHeader;
 use near_primitives::transaction::SignedTransaction;
 use near_primitives::types::{
     AccountId, Balance, BlockIndex, EpochId, Gas, MerkleHash, ShardId, StateRoot, StateRootNode,
-    ValidatorStake,
+    ValidatorStake, ValidatorStats,
 };
 use near_primitives::utils::{prefix_for_access_key, ACCOUNT_DATA_SEPARATOR};
 use near_primitives::views::{
@@ -532,7 +532,7 @@ impl RuntimeAdapter for NightshadeRuntime {
         epoch_id: &EpochId,
         last_known_block_hash: &CryptoHash,
         account_id: &AccountId,
-    ) -> Result<(u64, u64), Error> {
+    ) -> Result<ValidatorStats, Error> {
         let mut epoch_manager = self.epoch_manager.write().expect(POISONED_LOCK_ERR);
         epoch_manager
             .get_num_validator_blocks(epoch_id, last_known_block_hash, account_id)

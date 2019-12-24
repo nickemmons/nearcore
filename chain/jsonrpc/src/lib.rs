@@ -338,12 +338,7 @@ impl JsonRpcHandler {
 
     async fn validators(&self, params: Option<Value>) -> Result<Value, RpcError> {
         let (block_id,) = parse_params::<(MaybeBlockId,)>(params)?;
-        jsonify(
-            self.view_client_addr
-                .send(GetValidatorInfo { block_id })
-                .compat()
-                .await,
-        )
+        jsonify(self.view_client_addr.send(GetValidatorInfo { block_id }).compat().await)
     }
 }
 

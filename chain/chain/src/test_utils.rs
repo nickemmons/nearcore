@@ -7,11 +7,6 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use chrono::Utc;
 use log::debug;
 
-use crate::chain::WEIGHT_MULTIPLIER;
-use crate::error::{Error, ErrorKind};
-use crate::store::ChainStoreAccess;
-use crate::types::{ApplyTransactionResult, BlockHeader, RuntimeAdapter};
-use crate::{Chain, ChainGenesis};
 use near_crypto::{InMemorySigner, KeyType, PublicKey, SecretKey, Signature, Signer};
 use near_pool::types::PoolIterator;
 use near_primitives::account::{AccessKey, Account};
@@ -28,7 +23,7 @@ use near_primitives::transaction::{
 };
 use near_primitives::types::{
     AccountId, Balance, BlockIndex, EpochId, Gas, Nonce, ShardId, StateRoot, StateRootNode,
-    ValidatorStake,
+    ValidatorStake, ValidatorStats,
 };
 use near_primitives::views::{
     AccessKeyInfoView, AccessKeyList, EpochValidatorInfo, QueryResponse, QueryResponseKind,
@@ -37,6 +32,12 @@ use near_store::test_utils::create_test_store;
 use near_store::{
     ColBlockHeader, PartialStorage, Store, StoreUpdate, Trie, TrieChanges, WrappedTrieChanges,
 };
+
+use crate::chain::WEIGHT_MULTIPLIER;
+use crate::error::{Error, ErrorKind};
+use crate::store::ChainStoreAccess;
+use crate::types::{ApplyTransactionResult, BlockHeader, RuntimeAdapter};
+use crate::{Chain, ChainGenesis};
 
 #[derive(BorshSerialize, BorshDeserialize, Hash, PartialEq, Eq, Ord, PartialOrd, Clone, Debug)]
 struct AccountNonce(AccountId, Nonce);
@@ -339,8 +340,8 @@ impl RuntimeAdapter for KeyValueRuntime {
         _epoch_id: &EpochId,
         _last_known_block_hash: &CryptoHash,
         _account_id: &AccountId,
-    ) -> Result<(u64, u64), Error> {
-        Ok((0, 0))
+    ) -> Result<ValidatorStats, Error> {
+        Ok(ValidatorStats { blocks_produced: 0, blocks_expected: 0 })
     }
 
     fn num_shards(&self) -> ShardId {
