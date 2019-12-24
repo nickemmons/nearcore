@@ -11,7 +11,7 @@ use crate::account::{AccessKey, AccessKeyPermission, Account, FunctionCallPermis
 use crate::block::{Approval, Block, BlockHeader, BlockHeaderInnerLite, BlockHeaderInnerRest};
 use crate::challenge::{Challenge, ChallengesResult};
 use crate::errors::{ActionError, ExecutionError, InvalidAccessKeyError, InvalidTxError};
-use crate::hash::CryptoHash;
+use crate::hash::{hash, CryptoHash};
 use crate::logging;
 use crate::merkle::MerklePath;
 use crate::receipt::{ActionReceipt, DataReceipt, DataReceiver, Receipt, ReceiptEnum};
@@ -512,7 +512,7 @@ impl ChunkView {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
 pub enum ActionView {
     CreateAccount,
     DeployContract {
@@ -551,7 +551,7 @@ impl From<Action> for ActionView {
         match action {
             Action::CreateAccount(_) => ActionView::CreateAccount,
             Action::DeployContract(action) => {
-                ActionView::DeployContract { code: to_base64(&action.code) }
+                ActionView::DeployContract { code: to_base64(&hash(&action.code)) }
             }
             Action::FunctionCall(action) => ActionView::FunctionCall {
                 method_name: action.method_name,
@@ -609,15 +609,15 @@ impl TryFrom<ActionView> for Action {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, BorshSerialize, BorshDeserialize, PartialEq, Eq, Clone)]
 pub struct SignedTransactionView {
-    signer_id: AccountId,
-    public_key: PublicKey,
-    nonce: Nonce,
-    receiver_id: AccountId,
-    actions: Vec<ActionView>,
-    signature: Signature,
-    hash: CryptoHash,
+    pub signer_id: AccountId,
+    pub public_key: PublicKey,
+    pub nonce: Nonce,
+    pub receiver_id: AccountId,
+    pub actions: Vec<ActionView>,
+    pub signature: Signature,
+    pub hash: CryptoHash,
 }
 
 impl From<SignedTransaction> for SignedTransactionView {
@@ -843,6 +843,7 @@ pub struct ExecutionOutcomeWithIdView {
     pub id: CryptoHash,
     pub outcome: ExecutionOutcomeView,
     pub proof: MerklePath,
+    pub block_hash: CryptoHash,
 }
 
 impl From<ExecutionOutcomeWithIdAndProof> for ExecutionOutcomeWithIdView {
@@ -851,6 +852,7 @@ impl From<ExecutionOutcomeWithIdAndProof> for ExecutionOutcomeWithIdView {
             id: outcome_with_id_and_proof.outcome_with_id.id,
             outcome: outcome_with_id_and_proof.outcome_with_id.outcome.into(),
             proof: outcome_with_id_and_proof.proof,
+            block_hash: outcome_with_id_and_proof.block_hash,
         }
     }
 }
@@ -860,10 +862,12 @@ impl From<ExecutionOutcomeWithIdAndProof> for ExecutionOutcomeWithIdView {
 pub struct FinalExecutionOutcomeView {
     /// Execution status. Contains the result in case of successful execution.
     pub status: FinalExecutionStatus,
+    /// Signed Transaction
+    pub transaction: SignedTransactionView,
     /// The execution outcome of the signed transaction.
-    pub transaction: ExecutionOutcomeWithIdView,
+    pub transaction_outcome: ExecutionOutcomeWithIdView,
     /// The execution outcome of receipts.
-    pub receipts: Vec<ExecutionOutcomeWithIdView>,
+    pub receipts_outcome: Vec<ExecutionOutcomeWithIdView>,
 }
 
 impl fmt::Debug for FinalExecutionOutcomeView {
@@ -871,7 +875,11 @@ impl fmt::Debug for FinalExecutionOutcomeView {
         f.debug_struct("FinalExecutionOutcome")
             .field("status", &self.status)
             .field("transaction", &self.transaction)
-            .field("receipts", &format_args!("{}", logging::pretty_vec(&self.receipts)))
+            .field("transaction_outcome", &self.transaction_outcome)
+            .field(
+                "receipts_outcome",
+                &format_args!("{}", logging::pretty_vec(&self.receipts_outcome)),
+            )
             .finish()
     }
 }
