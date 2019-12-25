@@ -83,7 +83,7 @@ fn main() {
         let validators = user.validators(None).unwrap();
         // Check:
         //  - don't already have a proposal
-        //  - to many missing blocks in current validators
+        //  - too many missing blocks in current validators
         //  - missing in next validators
         if validators.current_proposals.iter().any(|proposal| proposal.account_id == account_id) {
             continue;
@@ -105,7 +105,7 @@ fn main() {
             .iter()
             .any(|validator_info| validator_info.account_id == account_id);
         if restake {
-            //                        // kicked out or getting kicked out
+            // Already kicked out or getting kicked out.
             let amount = if stake_amount == 0 { last_stake_amount } else { stake_amount };
             println!("Sending staking transaction {} -> {}", key_file.account_id, amount);
             if let Err(err) =

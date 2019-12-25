@@ -7,7 +7,8 @@ use near_primitives::challenge::SlashedValidator;
 use near_primitives::hash::CryptoHash;
 use near_primitives::serialize::to_base;
 use near_primitives::types::{
-    AccountId, Balance, BlockIndex, EpochId, ShardId, ValidatorId, ValidatorStake, ValidatorStats,
+    AccountId, Balance, BlockChunkValidatorStats, BlockIndex, EpochId, ShardId, ValidatorId,
+    ValidatorStake, ValidatorStats,
 };
 
 pub type RngSeed = [u8; 32];
@@ -136,10 +137,10 @@ impl BlockInfo {
         prev_block_tracker
             .entry(block_producer_id)
             .and_modify(|validator_stats| {
-                validator_stats.blocks_produced += 1;
-                validator_stats.blocks_expected += 1;
+                validator_stats.produced += 1;
+                validator_stats.expected += 1;
             })
-            .or_insert(ValidatorStats { blocks_produced: 1, blocks_expected: 1 });
+            .or_insert(ValidatorStats { produced: 1, expected: 1 });
         // Iterate over all skipped blocks and increase the number of expected blocks.
         for index in prev_block_index + 1..self.index {
             let bp = epoch_info.block_producers
@@ -147,9 +148,9 @@ impl BlockInfo {
             prev_block_tracker
                 .entry(bp)
                 .and_modify(|validator_stats| {
-                    validator_stats.blocks_expected += 1;
+                    validator_stats.expected += 1;
                 })
-                .or_insert(ValidatorStats { blocks_produced: 0, blocks_expected: 1 });
+                .or_insert(ValidatorStats { produced: 0, expected: 1 });
         }
         self.block_tracker = prev_block_tracker;
     }
@@ -229,7 +230,7 @@ pub struct EpochSummary {
     pub last_block_hash: CryptoHash,
     pub all_proposals: Vec<ValidatorStake>,
     pub validator_kickout: HashSet<AccountId>,
-    pub validator_online_ratio: HashMap<AccountId, ValidatorStats>,
+    pub validator_block_chunk_stats: HashMap<AccountId, BlockChunkValidatorStats>,
     pub total_storage_rent: Balance,
     pub total_validator_reward: Balance,
 }

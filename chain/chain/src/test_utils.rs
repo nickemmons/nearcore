@@ -341,7 +341,7 @@ impl RuntimeAdapter for KeyValueRuntime {
         _last_known_block_hash: &CryptoHash,
         _account_id: &AccountId,
     ) -> Result<ValidatorStats, Error> {
-        Ok(ValidatorStats { blocks_produced: 0, blocks_expected: 0 })
+        Ok(ValidatorStats { produced: 0, expected: 0 })
     }
 
     fn num_shards(&self) -> ShardId {

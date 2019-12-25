@@ -146,6 +146,11 @@ pub type MaybeBlockId = Option<BlockId>;
 
 #[derive(Default, BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 pub struct ValidatorStats {
-    pub blocks_produced: BlockIndex,
-    pub blocks_expected: BlockIndex,
+    pub produced: BlockIndex,
+    pub expected: BlockIndex,
+}
+
+pub struct BlockChunkValidatorStats {
+    pub block_stats: ValidatorStats,
+    pub chunk_stats: ValidatorStats,
 }

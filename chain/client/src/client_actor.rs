@@ -634,7 +634,7 @@ impl ClientActor {
                     &head.last_block_hash,
                     &next_block_producer_account,
                 )?;
-                validator_stats.blocks_expected - validator_stats.blocks_produced
+                validator_stats.expected - validator_stats.produced
             } else {
                 0
             };
