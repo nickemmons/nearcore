@@ -41,7 +41,7 @@ pub fn setup_network_node(
     // Network config
     let ttl_account_id_router = Duration::from_millis(2000);
     let mut config = NetworkConfig::from_seed(account_id.as_str(), port);
-    config.peer_max_count = peer_max_count;
+    config.max_peer = peer_max_count;
     config.ttl_account_id_router = ttl_account_id_router;
     config.blacklist = blacklist;
 
